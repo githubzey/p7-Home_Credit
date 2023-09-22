@@ -1,4 +1,5 @@
 fastapi==0.103.1
+lightgbm==3.3.5
 matplotlib==3.7.2
 numpy==1.23.5
 pandas==2.0.3
