@@ -8,6 +8,7 @@ import pickle
 import uvicorn
 import shap
 import json
+from lightgbm import LGBMClassifier
 
 # Loading the model and data
 #path = "data_api/"
