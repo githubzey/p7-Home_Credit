@@ -9,20 +9,30 @@ import numpy as np
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import seaborn as sns
-
+import pickle
+from sklearn.pipeline import Pipeline
+from sklearn.neighbors import NearestNeighbors
 # local
 #API_URL = "http://localhost:8000/"
 # deployment cloud
 API_URL = "https://apihomecredit-861d00eaed91.herokuapp.com/"
 
-data_dash = pd.read_csv("filtered_data.csv")
-data_test_imp = pd.read_csv("data_test_imp.csv")
+pipeline_preprocess = pickle.load(open('pipeline_preprocess.pkl', 'rb'))
+
+data_dash = pd.read_csv("data/filtered_data_sample.csv")
+data_test_sample = pd.read_csv("data/data_test_sample.csv")
+data_knn = pd.read_csv('data/data_knn_sample.csv')
+data_indexed = data_test_sample.set_index("SK_ID_CURR")
+data_process = pipeline_preprocess.transform(data_indexed)
+data_process = pd.DataFrame(data_process, columns=data_indexed.columns, index=data_indexed.index)
+data_scaled = data_process.reset_index()
+
 
 
 def prediction(client_id):
     url_get_pred = API_URL + "predict" 
-    client_data = data_test_imp[data_test_imp['SK_ID_CURR']==int(client_id)].drop('SK_ID_CURR', axis=1)
-    client_data_json = client_data.to_json(orient="records")
+    client_data = data_test_sample[data_test_sample['SK_ID_CURR']==int(client_id)].drop('SK_ID_CURR', axis=1)
+    client_data_json = client_data.to_json(orient="records", default_handler=str)
     response = requests.post(url_get_pred , json={"data": client_data_json})
     prediction = response.json()["proba"]
     return prediction
@@ -32,27 +42,36 @@ def prediction(client_id):
 st.set_page_config(page_title="Home Credit", layout='wide')
 st.title("Décision Home Credit")
 
+# Function to handle NaN values 
+
+# Function to handle NaN values
+def handle_nan(value):
+    if isinstance(value, pd.Series):
+        return value.apply(lambda x: "None" if pd.isna(x) else str(x))
+    else:
+        return "None" if pd.isna(value) else str(value)
+
+
 def info_client(client_id):
-    data_dash = pd.read_csv("filtered_data.csv")
+    data_dash = pd.read_csv("data/filtered_data_sample.csv")
     df_info = data_dash[data_dash['SK_ID_CURR']==client_id]
     st.dataframe(data=df_info)
-    #st.write(df_info.drop(columns=['TARGET'],axis=1))
     st.markdown("<h5 style='font-weight: bold;'>Informations de client :</h5>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     col1.write("ID client : " + str(client_id))
-    col1.write("Genre : " + df_info['CODE_GENDER'].item())
-    col1.write("Age : " + str(int((df_info['DAYS_BIRTH'] / -365))))
-    col1.write("Type d'éducation : " + df_info['NAME_EDUCATION_TYPE'].item())
-    col1.write("Statut familial : " + df_info['NAME_FAMILY_STATUS'].item())
-    col1.write("Nombre d'enfant : " + str(df_info['CNT_CHILDREN'].item()))
-    col1.write("Type de contrat : " + df_info['NAME_CONTRACT_TYPE'].item())
+    col1.write("Genre : " + handle_nan(df_info['CODE_GENDER'].item()))
+    col1.write("Age : " + handle_nan(df_info['DAYS_BIRTH'].item()))
+    col1.write("Type d'éducation : " + handle_nan(df_info['NAME_EDUCATION_TYPE'].item()))
+    col1.write("Statut familial : " + handle_nan(df_info['NAME_FAMILY_STATUS'].item()))
+    col1.write("Nombre d'enfant : " + handle_nan(df_info['CNT_CHILDREN'].item()))
+    col1.write("Type de contrat : " + handle_nan(df_info['NAME_CONTRACT_TYPE'].item()))
 
-    col2.write("Type de revenu : " + df_info['NAME_INCOME_TYPE'].item()) 
-    col2.write("Revenu total : " + str(df_info['AMT_INCOME_TOTAL'].item()))
-    col2.write("Prêt total : " + str(df_info['AMT_INCOME_TOTAL'].item()))
-    col2.write("Durée travail(année) : " + str(int((df_info['DAYS_EMPLOYED']/ -365))))
-    col2.write("Propriétaire maison/appartement : " + df_info['FLAG_OWN_REALTY'].item())
-    col2.write("Type de logement : " + df_info['NAME_HOUSING_TYPE'].item())
+    col2.write("Type de revenu : " + handle_nan(df_info['NAME_INCOME_TYPE'].item()))
+    col2.write("Revenu total : " + handle_nan(df_info['AMT_INCOME_TOTAL'].item()))
+    col2.write("Prêt total : " + handle_nan(df_info['AMT_CREDIT'].item()))
+    col2.write("Durée travail(année) : " + handle_nan(df_info['DAYS_EMPLOYED'].item()))
+    col2.write("Propriétaire maison/appartement : " + handle_nan(df_info['FLAG_OWN_REALTY'].item()))
+    col2.write("Type de logement : " + handle_nan(df_info['NAME_HOUSING_TYPE'].item()))
 
 def score_risque(proba_fail):
    
@@ -61,7 +80,7 @@ def score_risque(proba_fail):
         value = proba_fail * 100,
         mode = "gauge+number+delta",
         title = {'text': "Score risque"},
-        delta = {'reference': 50},
+        delta = {'reference': 54},
         gauge = {'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "black"},
                'bar': {'color': "MidnightBlue"},
                'steps': [
@@ -77,12 +96,12 @@ def score_risque(proba_fail):
 def shap_val_local():
   
     url_get_shap_local = API_URL + "shaplocal/"
-    client_data = data_test_imp[data_test_imp['SK_ID_CURR']==int(client_id)].drop('SK_ID_CURR', axis=1)
-    client_data_json = client_data.to_json(orient="records")
+    client_data = data_test_sample[data_test_sample['SK_ID_CURR']==int(client_id)].drop('SK_ID_CURR', axis=1)
+    client_data_json = client_data.to_json(orient="records", default_handler=str)
     response = requests.post(url_get_shap_local, json={"data": client_data_json})
     res = json.loads(response.content)
     shap_val_local = res['shap_values']
-    base_values = res['base_values']
+    base_values = res['base_value']
 
     explanation = shap.Explanation(np.reshape(np.array(shap_val_local, dtype='float'), (1, -1)),
                                    base_values, 
@@ -91,6 +110,23 @@ def shap_val_local():
                                    feature_names=client_data.columns)
 
     return explanation[0]
+
+def comparaison(data, client_id, num_neighbors):
+     features_of_interest = ['EXT_SOURCE_2', 'EXT_SOURCE_3', 'CODE_GENDER',
+       'PAYMENT_RATE', 'DAYS_EMPLOYED', 'INSTAL_DPD_MEAN',
+       'PREV_CNT_PAYMENT_MEAN', 'NAME_EDUCATION_TYPE_Highereducation',
+       'DAYS_BIRTH', 'AMT_ANNUITY']
+     selected_client = data[data['SK_ID_CURR'] == client_id]
+     features_of_interest = features_of_interest 
+     selected_client_features = selected_client[features_of_interest]
+     knn = NearestNeighbors(n_neighbors=num_neighbors) 
+     knn.fit(data_knn[features_of_interest])
+     # Find similar clients
+     similar_clients_indices = knn.kneighbors(selected_client_features)[1]
+     similar_clients = data_knn.iloc[similar_clients_indices[0]]
+     return selected_client, similar_clients 
+
+
 
 
 Selections = ["Home",
@@ -123,19 +159,19 @@ if selection == "Home":
                 
 
 if selection == "Information client":
-    client_id = st.selectbox("Sélectionnez le numéro du client", data_test_imp['SK_ID_CURR'])
+    client_id = st.selectbox("Sélectionnez le numéro du client", data_test_sample['SK_ID_CURR'])
     st.subheader("Les informations des clients")
     info_client(client_id)
 
     
 if selection == "Score et décision":
-    client_id = st.selectbox("Sélectionnez le numéro du client", data_test_imp['SK_ID_CURR'])
+    client_id = st.selectbox("Sélectionnez le numéro du client", data_test_sample['SK_ID_CURR'])
     col1, col2 = st.columns(2)
     with col1:
         st.subheader("Visualisation des scores de prédiction")
         proba_fail = prediction(client_id)
         st.write('La probabilité de faillite du client : '+str(int(proba_fail * 100))+ "%")
-        threshold = 0.5
+        threshold = 0.54
         if proba_fail <= threshold:
                     st.success("Crédit accepté", icon="✅")
         else:
@@ -154,21 +190,56 @@ if selection == "Score et décision":
         shap.waterfall_plot(shap_val, show=False)
         st.pyplot(fig)     
     with col2:
-         st.image('image/shap_global.png')
+         st.image('image/shap_global2.png')
          
 if selection == "Comparaison":
-    client_id = st.selectbox("Sélectionnez le numéro du client", data_test_imp['SK_ID_CURR'])
-   
+    features_of_interest = ['EXT_SOURCE_2', 'EXT_SOURCE_3', 'CODE_GENDER',
+       'PAYMENT_RATE', 'DAYS_EMPLOYED', 'INSTAL_DPD_MEAN',
+       'PREV_CNT_PAYMENT_MEAN', 'NAME_EDUCATION_TYPE_Highereducation',
+       'DAYS_BIRTH', 'AMT_ANNUITY']
+    client_id = st.selectbox("Sélectionnez le numéro du client", data_test_sample['SK_ID_CURR'])
+    # Sidebar to choose the number of neighbors for KNN
+    num_neighbors = st.slider('Number of Neighbors', min_value=100, max_value=10000, value=500)
+    # Sidebar to select a feature
+    selected_feature = st.selectbox('Select a Feature', features_of_interest)
 
+    selected_client, similar_clients = comparaison(data_scaled, client_id, num_neighbors)
+    # Create a DataFrame for selected clients (including the chosen client)
+    selected_clients = pd.concat([selected_client, similar_clients])   
+    filtered_graph = similar_clients[[selected_feature, 'TARGET']] 
+    plt.figure(figsize=(8, 4))
+    if selected_feature in ['CODE_GENDER', 'NAME_EDUCATION_TYPE_Highereducation']:
+        sns.countplot(x=selected_feature, hue='TARGET', data=filtered_graph)
+        plt.title(f'Count Plot for {selected_feature}')
+        plt.xlabel(selected_feature)
+        plt.ylabel('Count')
+        # Add a marker for the selected client
+        #selected_client_value = selected_client[selected_feature].values[0]
+        #proba_fail = prediction(client_id)
+        #threshold = 0.54
+        #if proba_fail <= threshold:
+            #plt.scatter([2], [selected_client_value], color='black', marker='X', s=100, label='Selected Client')
+        #else:
+            #plt.scatter([2], [selected_client_value], color='red', marker='X', s=100, label='Selected Client')
+        plt.legend(loc='upper right')
+        plt.tight_layout()
+    else:  # Show Box Plot
+        sns.boxplot(x='TARGET', y=selected_feature, data=filtered_graph)
+        plt.title(f'Box Plot for {selected_feature}')
+        plt.xlabel('Credit Status')
+        plt.ylabel(selected_feature)
+        # Add a marker for the selected client
+        selected_client_value = selected_client[selected_feature].values[0]
+        proba_fail = prediction(client_id)
+        threshold = 0.54
+        if proba_fail <= threshold:
+            plt.scatter([0], [selected_client_value], color='black', marker='X', s=100, label='Selected Client')
+        else:
+            plt.scatter([1], [selected_client_value], color='red', marker='X', s=100, label='Selected Client')
+        plt.legend(loc='upper right')
+        plt.tight_layout()
+    
 
+    st.pyplot(plt)
 
 # streamlit run dashboard.py
-
-
-
-
-
-
-
-
-
