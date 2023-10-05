@@ -53,7 +53,7 @@ def handle_nan(value):
 
 
 def info_client(client_id):
-    data_dash = pd.read_csv("filtered_data.csv")
+    data_dash = pd.read_csv("data/filtered_data_sample.csv")
     df_info = data_dash[data_dash['SK_ID_CURR']==client_id]
     st.dataframe(data=df_info)
     st.markdown("<h5 style='font-weight: bold;'>Informations de client :</h5>", unsafe_allow_html=True)
