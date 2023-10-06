@@ -7,15 +7,16 @@ import json
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+import plotly.express as px
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pickle
 from sklearn.pipeline import Pipeline
 from sklearn.neighbors import NearestNeighbors
 # local
-#API_URL = "http://localhost:8000/"
+API_URL = "http://localhost:8000/"
 # deployment cloud
-API_URL = "https://apihomecredit-861d00eaed91.herokuapp.com/"
+#API_URL = "https://apihomecredit-861d00eaed91.herokuapp.com/"
 
 pipeline_preprocess = pickle.load(open('pipeline_preprocess.pkl', 'rb'))
 
@@ -205,41 +206,65 @@ if selection == "Comparaison":
 
     selected_client, similar_clients = comparaison(data_scaled, client_id, num_neighbors)
     # Create a DataFrame for selected clients (including the chosen client)
-    selected_clients = pd.concat([selected_client, similar_clients])   
-    filtered_graph = similar_clients[[selected_feature, 'TARGET']] 
-    plt.figure(figsize=(8, 4))
+    
+    filtered_graph = similar_clients[[selected_feature, 'TARGET']]
+    
     if selected_feature in ['CODE_GENDER', 'NAME_EDUCATION_TYPE_Highereducation']:
-        sns.countplot(x=selected_feature, hue='TARGET', data=filtered_graph)
-        plt.title(f'Count Plot for {selected_feature}')
-        plt.xlabel(selected_feature)
-        plt.ylabel('Count')
-        # Add a marker for the selected client
-        #selected_client_value = selected_client[selected_feature].values[0]
-        #proba_fail = prediction(client_id)
-        #threshold = 0.54
-        #if proba_fail <= threshold:
-            #plt.scatter([2], [selected_client_value], color='black', marker='X', s=100, label='Selected Client')
-        #else:
-            #plt.scatter([2], [selected_client_value], color='red', marker='X', s=100, label='Selected Client')
-        plt.legend(loc='upper right')
-        plt.tight_layout()
-    else:  # Show Box Plot
-        sns.boxplot(x='TARGET', y=selected_feature, data=filtered_graph)
-        plt.title(f'Box Plot for {selected_feature}')
-        plt.xlabel('Credit Status')
-        plt.ylabel(selected_feature)
+        #fig = px.bar(filtered_graph, x=selected_feature, color='TARGET', barmode='group')
+        fig = px.histogram(filtered_graph, x=selected_feature, color='TARGET',
+                           color_discrete_map={0: 'green', 1: 'red'}, barmode='group')
+
         # Add a marker for the selected client
         selected_client_value = selected_client[selected_feature].values[0]
-        proba_fail = prediction(client_id)
-        threshold = 0.54
-        if proba_fail <= threshold:
-            plt.scatter([0], [selected_client_value], color='black', marker='X', s=100, label='Selected Client')
-        else:
-            plt.scatter([1], [selected_client_value], color='red', marker='X', s=100, label='Selected Client')
-        plt.legend(loc='upper right')
-        plt.tight_layout()
-    
+        fig.add_shape(
+            type='line',
+            x0=selected_client_value,
+            x1=selected_client_value,
+            y0=0,
+            y1=1,
+            xref='x',
+            yref='paper',
+            line=dict(color='red', width=2)
+        )
 
-    st.pyplot(plt)
+        # Add a text label near the marker
+        fig.add_annotation(
+            text='Selected Client',
+            x=selected_client_value,
+            y=1.05,  # Adjust the Y position for the label
+            showarrow=False,
+            font=dict(color='red', size=12)
+        )
+
+
+
+        fig.update_layout(title=f'Count Plot for {selected_feature}')
+        st.plotly_chart(fig)
+    else:  # Show Box Plot
+        
+        selected_client_value = selected_client[selected_feature].values[0]
+        # Create a box plot using Plotly
+        fig = px.box(filtered_graph, x='TARGET', y=selected_feature, color='TARGET')
+
+        # Add a marker line for the selected client
+        fig.add_shape(type='line',
+                    x0=0.5, x1=1.5, y0=selected_client_value, y1=selected_client_value,
+                    line=dict(color='red', width=2))
+
+        # Customize the layout
+        fig.update_layout(title=f'Box Plot for {selected_feature}',
+                        xaxis_title='Credit Status',
+                        yaxis_title=selected_feature,
+                        legend_title='TARGET')
+
+        # Show the plot
+        st.plotly_chart(fig)
+
+
+
+    st.write("Legend:")
+    st.write("0: Credit Accepted")
+    st.write("1: Credit Refused")
+
 
 # streamlit run dashboard.py
