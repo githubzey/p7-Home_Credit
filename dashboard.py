@@ -14,9 +14,9 @@ import pickle
 from sklearn.pipeline import Pipeline
 from sklearn.neighbors import NearestNeighbors
 # local
-API_URL = "http://localhost:8000/"
+#API_URL = "http://localhost:8000/"
 # deployment cloud
-#API_URL = "https://apihomecredit-861d00eaed91.herokuapp.com/"
+API_URL = "https://apihomecredit-861d00eaed91.herokuapp.com/"
 
 pipeline_preprocess = pickle.load(open('pipeline_preprocess.pkl', 'rb'))
 
@@ -224,7 +224,7 @@ if selection == "Comparaison":
             y1=1,
             xref='x',
             yref='paper',
-            line=dict(color='red', width=2)
+            line=dict(color='black', width=2)
         )
 
         # Add a text label near the marker
@@ -233,7 +233,7 @@ if selection == "Comparaison":
             x=selected_client_value,
             y=1.05,  # Adjust the Y position for the label
             showarrow=False,
-            font=dict(color='red', size=12)
+            font=dict(color='black', size=12)
         )
 
 
@@ -244,12 +244,23 @@ if selection == "Comparaison":
         
         selected_client_value = selected_client[selected_feature].values[0]
         # Create a box plot using Plotly
-        fig = px.box(filtered_graph, x='TARGET', y=selected_feature, color='TARGET')
+        fig = px.box(filtered_graph, x='TARGET', y=selected_feature, color='TARGET',
+                     color_discrete_map={0: 'green', 1: 'red'})
 
         # Add a marker line for the selected client
         fig.add_shape(type='line',
-                    x0=0.5, x1=1.5, y0=selected_client_value, y1=selected_client_value,
-                    line=dict(color='red', width=2))
+                    x0=-0.5, x1=1.5, y0=selected_client_value, y1=selected_client_value,
+                    line=dict(color='black', width=2))
+
+        # Add a text label near the marker
+        fig.add_annotation(
+            text='Selected Client',
+            x=selected_client_value,
+            y=1.05,  # Adjust the Y position for the label
+            showarrow=False,
+            font=dict(color='black', size=12)
+        )
+
 
         # Customize the layout
         fig.update_layout(title=f'Box Plot for {selected_feature}',
