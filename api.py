@@ -34,7 +34,7 @@ app = FastAPI()
 @app.get('/')
 def home():
 
-    return 'Welcome to API Home Credit'
+    return 'Welcome to API Home Credit test'
 
 class ClientData(BaseModel):
     data: str
