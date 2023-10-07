@@ -32,18 +32,18 @@ jobs:
     - name: Test with pytest
       run: |
         pytest
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v1
-    - name: deploy to server 
-      uses: akhileshns/heroku-deploy@v3.12.14 
-      with:
-        email: ${{ secrets.HEROKU_EMAIL }}
-        heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+  #deploy:
+    #runs-on: ubuntu-latest
+   # steps:
+    #- uses: actions/checkout@v1
+   # - name: deploy to server 
+    #  uses: akhileshns/heroku-deploy@v3.12.14 
+    #  with:
+      #  email: ${{ secrets.HEROKU_EMAIL }}
+      #  heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
             
         # Name of the heroku application to which the build is to be sent.
-        heroku_app_name: ${{ secrets.HEROKU_APP_NAME }}
-        script: uvicorn api:app --host=0.0.0.0 --port=${PORT:-5000}
+       # heroku_app_name: ${{ secrets.HEROKU_APP_NAME }}
+       # script: uvicorn api:app --host=0.0.0.0 --port=${PORT:-5000}
       
     
