@@ -37,7 +37,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: deploy to server 
-      uses: gonuit/heroku-docker-deploy@v1.3.3
+      uses: appleboy/ssh-action@master
       with:
         email: ${{ secrets.HEROKU_EMAIL }}
         heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
