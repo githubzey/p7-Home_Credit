@@ -10,16 +10,16 @@ import json
 from sklearn.pipeline import Pipeline
 
 class Item(BaseModel):
-    EXT_SOURCE_2: float = 0.0304315707
-    EXT_SOURCE_3:float = 0.1107962886
-    CODE_GENDER:float = 0.7209239877
-    PAYMENT_RATE:float = -0.2418253653
-    DAYS_EMPLOYED:float = 0.2833922874
-    PREV_CNT_PAYMENT_MEAN:float = -0.2903476431
-    NAME_EDUCATION_TYPE_Highereducation:float = -0.052079095
-    INSTAL_DPD_MEAN:float = -0.7625702765
-    DAYS_BIRTH:float = -0.9914858035
-    AMT_ANNUITY:float = 0.6444642056
+    EXT_SOURCE_2: float = 0.5202729458
+    EXT_SOURCE_3:float = 0.537070
+    CODE_GENDER:float = 1
+    PAYMENT_RATE:float = 0.0482779168
+    DAYS_EMPLOYED:float = 4.52
+    INSTAL_DPD_MEAN:float = 0.5333333333
+    PREV_CNT_PAYMENT_MEAN:float = 12.0
+    NAME_EDUCATION_TYPE_Highereducation:float = 1
+    DAYS_BIRTH:float = 55.8
+    AMT_ANNUITY:float = 36459.0
 
 
 # Loading the model and data
@@ -34,26 +34,27 @@ app = FastAPI()
 @app.get('/')
 def home():
 
-    return 'Welcome to API Home Credit'
+    return 'Welcome to API Pret a depenser'
 
 class ClientData(BaseModel):
     data: str
 
-@app.post('/predicts_items')
-async def categorize_trx(item: Item):
+@app.post('/prediction_manual')
+async def prediction_manual(item: Item):
     # Check if the trx label is in the url
     df = pd.DataFrame(item.dict(), index=[0])
+    new_df = pipeline_preprocess.transform(df)
     print(df)
     try:
-        results = model.predict_proba(df)
-        return {'item': results[0][1]}
+        results = model.predict_proba(new_df)
+        return {'predic_proba': results[0][1].round(2)}
     except:
         return 'Error: No id field provided. Please specify a label.'
     
 
 
 @app.post("/predict")
-def predict_home_credit(client_data: ClientData):
+def predict_credit(client_data: ClientData):
     
     client_null = pd.read_json(client_data.data)
     client_df = pipeline_preprocess.transform(client_null)

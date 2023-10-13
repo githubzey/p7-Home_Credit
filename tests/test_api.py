@@ -14,10 +14,11 @@ class TestTools(unittest.TestCase):
 
     def test_homepage(self):
         url = "https://apihomecredit-861d00eaed91.herokuapp.com/" 
-       #url = "http://localhost:8000/"
+        #url = "http://localhost:8000/"
         response = requests.get(url)
         assert response.status_code == 200
-        #assert json.loads(response.content) == 'Welcome to API Home Credit'
+
+        assert json.loads(response.content) == 'Welcome to API Pret a depenser'
 
     def test_prediction(self):
        

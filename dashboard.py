@@ -9,7 +9,6 @@ import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 import matplotlib.pyplot as plt
-import seaborn as sns
 import pickle
 from sklearn.pipeline import Pipeline
 from sklearn.neighbors import NearestNeighbors
@@ -40,10 +39,8 @@ def prediction(client_id):
 
 
 # To set a webpage title, header and subtitle
-st.set_page_config(page_title="Home Credit", layout='wide')
-st.title("Décision Home Credit")
-
-# Function to handle NaN values 
+st.set_page_config(page_title="Prêt à dépenser", layout='wide')
+st.title("Décision Prêt à dépenser")
 
 # Function to handle NaN values
 def handle_nan(value):
@@ -102,10 +99,10 @@ def shap_val_local():
     response = requests.post(url_get_shap_local, json={"data": client_data_json})
     res = json.loads(response.content)
     shap_val_local = res['shap_values']
-    base_values = res['base_value']
+    base_value = res['base_value']
 
     explanation = shap.Explanation(np.reshape(np.array(shap_val_local, dtype='float'), (1, -1)),
-                                   base_values, 
+                                   base_value, 
                                    data=np.reshape(np.array(client_data.values.tolist(), dtype='float'),
                                                     (1, -1)),
                                    feature_names=client_data.columns)
@@ -132,7 +129,7 @@ def comparaison(data, client_id, num_neighbors):
 
 Selections = ["Home",
          "Information client",
-		 "Score et décision", "Comparaison"]
+		 "Décision et explication", "Comparaison"]
 
 st.sidebar.image('image/logo.png')
 st.sidebar.title('Menu')
@@ -154,7 +151,7 @@ if selection == "Home":
                 "\nLe dashboard est composé de plusieurs pages :\n"
 
                 "\n- **Information du client**: Vous y trouverez toutes les informations relatives au client sélectionné .\n"
-                "- **Score et décision**: Vous y trouverez quelles caractéristiques du client ont le plus"
+                "- **Décision et explication**: Vous y trouverez quelles caractéristiques du client ont le plus"
                 "influencé le choix d'approbation ou de refus de la demande de crédit et"
                 "la décision de l'algorithme.\n")
                 
@@ -165,7 +162,7 @@ if selection == "Information client":
     info_client(client_id)
 
     
-if selection == "Score et décision":
+if selection == "Décision et explication":
     client_id = st.selectbox("Sélectionnez le numéro du client", data_test_sample['SK_ID_CURR'])
     col1, col2 = st.columns(2)
     with col1:
@@ -202,7 +199,7 @@ if selection == "Comparaison":
     # Sidebar to choose the number of neighbors for KNN
     num_neighbors = st.slider('Number of Neighbors', min_value=100, max_value=10000, value=500)
     # Sidebar to select a feature
-    selected_feature = st.selectbox('Select a Feature', features_of_interest)
+    selected_feature = st.selectbox('Sélectionnez un feature à comparer', features_of_interest)
 
     selected_client, similar_clients = comparaison(data_scaled, client_id, num_neighbors)
     # Create a DataFrame for selected clients (including the chosen client)
@@ -227,18 +224,7 @@ if selection == "Comparaison":
             line=dict(color='black', width=2)
         )
 
-        # Add a text label near the marker
-        fig.add_annotation(
-            text='Selected Client',
-            x=selected_client_value,
-            y=1.05,  # Adjust the Y position for the label
-            showarrow=False,
-            font=dict(color='black', size=12)
-        )
-
-
-
-        fig.update_layout(title=f'Count Plot for {selected_feature}')
+        fig.update_layout(title=f'Count Plot pour {selected_feature}')
         st.plotly_chart(fig)
     else:  # Show Box Plot
         
@@ -252,19 +238,9 @@ if selection == "Comparaison":
                     x0=-0.5, x1=1.5, y0=selected_client_value, y1=selected_client_value,
                     line=dict(color='black', width=2))
 
-        # Add a text label near the marker
-        fig.add_annotation(
-            text='Selected Client',
-            x=selected_client_value,
-            y=1.05,  # Adjust the Y position for the label
-            showarrow=False,
-            font=dict(color='black', size=12)
-        )
-
-
         # Customize the layout
-        fig.update_layout(title=f'Box Plot for {selected_feature}',
-                        xaxis_title='Credit Status',
+        fig.update_layout(title=f'Box Plot pour {selected_feature}',
+                        xaxis_title='Credit Statut',
                         yaxis_title=selected_feature,
                         legend_title='TARGET')
 
@@ -274,8 +250,10 @@ if selection == "Comparaison":
 
 
     st.write("Legend:")
-    st.write("0: Credit Accepted")
-    st.write("1: Credit Refused")
+    st.write("0: Crédit accepté")
+    st.write("1: Crédit refusé")
+    st.write("ligne noir: Client sélectionné")
 
 
 # streamlit run dashboard.py
+# Dashboard URL https://dashboardhomecredit-1913c1e69feb.herokuapp.com/
