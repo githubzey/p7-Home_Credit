@@ -49,7 +49,7 @@ Vous trouverez les dossiers suivants dans
 - image : Les images pour le dasboard
 - dashboard.py : Fichier contenant le code du dashboard
 - Procfile et setup.sh :  Utilisés pour le déploiement du dashboard sur Heroku
-- requirements : Les libraries nécessaires pour le dashboard sont listées dans ce fichier.
+- requirements : Pour ce projet, nous avons utilisé Python en version 3.9.17. Les libraries nécessaires sont listées dans ce fichier.
 
 ## Liens
 * Le dossier Github : https://github.com/githubzey/p7_Home_Credit
