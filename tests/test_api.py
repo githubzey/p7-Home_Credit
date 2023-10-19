@@ -17,7 +17,6 @@ class TestTools(unittest.TestCase):
         #url = "http://localhost:8000/"
         response = requests.get(url)
         assert response.status_code == 200
-
         assert json.loads(response.content) == 'Welcome to API Pret a depenser'
 
     def test_prediction(self):
