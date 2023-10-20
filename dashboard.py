@@ -17,17 +17,44 @@ from sklearn.neighbors import NearestNeighbors
 # deployment cloud
 API_URL = "https://apihomecredit-861d00eaed91.herokuapp.com/"
 
-pipeline_preprocess = pickle.load(open('pipeline_preprocess.pkl', 'rb'))
+# Vous pouvez trouver les détails des ces datas à la fin de notebook modelisation,
+# dans la partie préparations des datas pour le dashboard.
 
-data_dash = pd.read_csv("data/filtered_data_sample.csv")
+# data_dash: Comme on a réduit les variables en 10 on a mis cette data 
+# pour la page des information des clients avec 122 variables pour avoir plus des informations sur un client
+data_dash = pd.read_csv("data/filtered_data_sample.csv") 
+
+# data_test_sample : data initial sans préprocessing pour envoyer à l'API
+# le préprocessing, prédiction et calcul shap values vont être éffectués dans la partie l'API
 data_test_sample = pd.read_csv("data/data_test_sample.csv")
+
+# data_knn: data vient de data_train pour comparer un client de data_test_sample avec ses voisins.
+# cette data aussi initial sans préprocessing
 data_knn = pd.read_csv('data/data_knn_sample.csv')
+
+# On va préparer les datas pour comparaison des clients pour knn
+# Pour ce la on va effectuer le préprocessing ici dans le dashboard
+pipeline_preprocess = pickle.load(open('pipeline_preprocess.pkl', 'rb')) 
+
+# On va utiliser imputer pour afficher les valeurs des clients sur les graphiques boxplots
+# Comme le pipeline_preprocess met les valeurs standardisés on a besoin imputer pour obtenir 
+# seulement les valeurs imputées mais non standardisées
+imputer = pickle.load(open('imputer.pkl', 'rb'))
+
+# Pour obtenir les infos des clients testés 
 data_indexed = data_test_sample.set_index("SK_ID_CURR")
 data_process = pipeline_preprocess.transform(data_indexed)
 data_process = pd.DataFrame(data_process, columns=data_indexed.columns, index=data_indexed.index)
 data_scaled = data_process.reset_index()
 
-
+# Pour obtenir les infos des clients voisins
+data_indexed_knn = data_knn.set_index("SK_ID_CURR")
+data_process_knn = pipeline_preprocess.transform(data_indexed_knn.drop('TARGET', axis=1))
+data_process_knn = pd.DataFrame(data_process_knn, 
+                                columns=data_indexed_knn.drop('TARGET', axis=1).columns,
+                                index=data_indexed_knn.index)
+data_process_knn["TARGET"] = data_knn["TARGET"] 
+data_scaled_knn = data_process_knn.reset_index()
 
 def prediction(client_id):
     url_pred = API_URL + "predict" 
@@ -117,11 +144,25 @@ def comparaison(data, client_id, num_neighbors):
      features_of_interest = features_of_interest 
      selected_client_features = selected_client[features_of_interest]
      knn = NearestNeighbors(n_neighbors=num_neighbors) 
-     knn.fit(data_knn[features_of_interest])
+     knn.fit(data_scaled_knn[features_of_interest])
      # Find similar clients
      similar_clients_indices = knn.kneighbors(selected_client_features)[1]
-     similar_clients = data_knn.iloc[similar_clients_indices[0]]
-     return selected_client, similar_clients 
+     data_knn_indexed = data_knn.drop('TARGET', axis=1).set_index("SK_ID_CURR")
+     data_knn_similars = imputer.transform(data_knn_indexed)
+     data_knn_similars = pd.DataFrame(data_knn_similars, 
+                                       columns=data_knn_indexed.columns,
+                                       index=data_knn_indexed.index)
+     data_knn_similars = data_knn_similars.reset_index()
+     data_knn_similars["TARGET"] = data_knn["TARGET"]
+     similar_clients = data_knn_similars.iloc[similar_clients_indices[0]]
+     selected_client_initial = data_test_sample[data_test_sample['SK_ID_CURR'] == client_id]
+     selected_client_initial_indexed = selected_client_initial.set_index("SK_ID_CURR")
+     client_for_compare = imputer.transform(selected_client_initial_indexed)
+     client_for_compare = pd.DataFrame(client_for_compare, 
+                                       columns=selected_client_initial_indexed.columns,
+                                       index=selected_client_initial_indexed.index)
+     client_for_compare = client_for_compare.reset_index()
+     return client_for_compare, similar_clients 
 
 
 
@@ -177,9 +218,10 @@ if selection == "Décision et explication":
                     st.error("Crédit refusé", icon="🚨")
 
     with col2:
+        st.write(" ")
+        st.write(" ")
         score_risque(proba_fail)
 
-    
     col1, col2 = st.columns([7,5])
     with col1:
         shap_val = shap_val_local()
@@ -187,9 +229,31 @@ if selection == "Décision et explication":
         fig, ax = plt.subplots()
         #fig = plt.figure()
         shap.waterfall_plot(shap_val, show=False)
-        st.pyplot(fig)     
+        st.pyplot(fig)  
+        expander = st.expander("Voir explication de graphique")
+        expander.write("""
+                         Le graphique présente l'impact de chaque feature pour l'individu sélectionné
+                         et comment ces features influencent la prédiction.
+                        Les features ayant un impact négatif sont en bleu,
+                        tandis que celles ayant un impact positif sont en rouge.
+                        Un feature en bleu réduit le risque de défaut de paiement, 
+                        tandis qu'un feature en rouge augmente le risque de défaut de paiement pour ce client.
+                        """)   
     with col2:
-         st.image('image/shap_global2.png')
+        st.write(" ")
+        st.image('image/shap_global2.png')
+        st.write(" ")
+        expander = st.expander("Voir explication de graphique et des variables")
+        expander.write("""
+                         Sur l'axe vertical, un déplacement vers la gauche indique 
+                       une réduction du risque de défaut de paiement, 
+                       tandis qu'un déplacement vers la droite augmente ce risque.
+                        Les couleurs rouge et bleue indiquent respectivement 
+                       des valeurs élevées et faibles. Par exemple, une faible valeur pour 
+                       la EXT_SOURCE_2 est associée à un risque accru de défaut.
+                        """)
+        expander.image("image/features.png")
+     
     st.write(" ")
     st.write("Le seuil de probabilité de faillite est de 54%")
          
@@ -200,19 +264,17 @@ if selection == "Comparaison":
        'DAYS_BIRTH', 'AMT_ANNUITY']
     client_id = st.selectbox("Sélectionnez le numéro du client", data_test_sample['SK_ID_CURR'])
     # Sidebar to choose the number of neighbors for KNN
-    num_neighbors = st.slider('Nombre de clients plus proches', min_value=100, max_value=10000, value=500)
+    num_neighbors = st.slider('Nombre de clients plus proches', min_value=100, max_value=1000, value=100)
     # Sidebar to select a feature
     selected_feature = st.selectbox('Sélectionnez un feature à comparer', features_of_graphs)
 
-    selected_client, similar_clients = comparaison(data_scaled, client_id, num_neighbors)
-    # Create a DataFrame for selected clients (including the chosen client)
-    
+    client_for_compare, similar_clients = comparaison(data_scaled, client_id, num_neighbors)
     filtered_graph = similar_clients[[selected_feature, 'TARGET']]
-    
     
     # Show Box Plot
         
-    selected_client_value = selected_client[selected_feature].values[0]
+    selected_client_value = client_for_compare[selected_feature].values[0]
+    st.write("La valeur pour le client sélectionné est : " + str(selected_client_value.round(2)))
     # Create a box plot using Plotly
     fig = px.box(filtered_graph, x='TARGET', y=selected_feature, color='TARGET',
                     color_discrete_map={0: 'green', 1: 'red'})
@@ -237,7 +299,7 @@ if selection == "Comparaison":
     st.write("0: Crédit accepté")
     st.write("1: Crédit refusé")
     st.write("ligne noire: Client sélectionné")
-    st.write("Les valeurs sont normalisées") 
+    
 
 
 # streamlit run dashboard.py
