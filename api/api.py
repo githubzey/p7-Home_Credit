@@ -23,8 +23,8 @@ class Item(BaseModel):
 
 
 # Loading the model and data
-model = pickle.load(open('best_model.pkl', 'rb'))
-pipeline_preprocess = pickle.load(open('pipeline_preprocess.pkl', 'rb'))
+model = pickle.load(open('api/best_model.pkl', 'rb'))
+pipeline_preprocess = pickle.load(open('api/pipeline_preprocess.pkl', 'rb'))
 explainer = shap.TreeExplainer(model)
 
 # Create a FastAPI instance
