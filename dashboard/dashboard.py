@@ -13,9 +13,9 @@ import pickle
 from sklearn.pipeline import Pipeline
 from sklearn.neighbors import NearestNeighbors
 # local
-#API_URL = "http://localhost:8000/"
+API_URL = "http://localhost:8000/"
 # deployment cloud
-API_URL = "https://apihomecredit-861d00eaed91.herokuapp.com/"
+#API_URL = "https://apihomecredit-861d00eaed91.herokuapp.com/"
 
 # Vous pouvez trouver les détails des ces datas à la fin de notebook modelisation,
 # dans la partie préparations des datas pour le dashboard.
